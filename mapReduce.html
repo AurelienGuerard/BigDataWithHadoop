@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<p id="demo"></p>
+
+<script>
+
+function map(listInputs) {
+    var SEPARATOR = " ";
+    var map = new Map();
+
+    // for each sentence
+    listInputs.forEach(function (sentence, sentenceIndex) {
+        var mapStrings = new Map();
+        //Split each word into an array of strings
+        var arrayOfStrings = sentence.split(SEPARATOR);
+
+        // for each word, add it to the map of String ({word, numberOccurence})
+        arrayOfStrings.forEach(function (word, wordIndex) {
+            //if the word is already in the map: increment
+            //else: add the new word
+            if (mapStrings.has(word)) {
+                mapStrings.set(word, mapStrings.get(word) + 1);
+            } else {
+                mapStrings.set(word, 1);
+            }
+        });
+        //add it to the final map
+        map.set(sentenceIndex, mapStrings);
+    });
+    return map;
+}
+
+function shuffleAndSort(nbReducers, map) {
+    
+    // ********** REDUCE ***********
+
+    var mapShuffleAndSort = new Map();
+
+    //for each ligne (value represente a map of words)
+    map.forEach(function (sentenceMap, sentenceNumber) {
+        //for each map of words
+        sentenceMap.forEach(function (wordOccurence, word){
+
+            //if the word is already inside, add a new value to the array
+            // else add a new entry to the map
+            if(mapShuffleAndSort.has(word)) {
+                mapShuffleAndSort.get(word).push(wordOccurence);
+            } else {
+                mapShuffleAndSort.set(word, [wordOccurence]);
+            }
+        });
+    });
+
+    // ********** SORT ***********
+
+    var listMapShuffleAndSort = new Map();
+
+    // Map ShuffleAndSort sorted ascending
+    var mapShuffleAndSortAsc = new Map([...mapShuffleAndSort.entries()].sort());
+
+    //The number of words per reducer
+    var limitElementPerMap = Math.floor(mapShuffleAndSortAsc.size/nbReducers);
+
+    //In case of remainder
+    var offset = mapShuffleAndSortAsc.size%nbReducers;
+
+    // Array of words of the map
+    var keys = mapShuffleAndSortAsc.keys();
+
+    // Counter
+    var y=0;
+
+    //for each reducer
+    for (var i = 0; i < nbReducers; i++) {
+        // create a new map
+        var tempMap = new Map();
+        y=0;
+        // Add the precise number of words per map (the first map takes every remainder)
+        while(y < limitElementPerMap + offset) {
+            var word = keys.next().value;
+            //If no more words break stop the loop
+            if(typeof word === "undefined") {
+                break;
+            }
+            // add {word, numberOccurence} to the temporary map
+            tempMap.set(word, mapShuffleAndSortAsc.get(word));
+            y++;
+        }            
+        offset = 0;
+        //add the map to the final map
+        listMapShuffleAndSort.set(i, tempMap);
+    }
+    return listMapShuffleAndSort;
+}
+
+function reduce(mapShuffleAndSort) {
+
+    // Copy the shuffled and sorted map
+    var mapReduced = mapShuffleAndSort;
+
+    // for each reducer
+    mapReduced.forEach(function (map, mapIndex){
+        // for each word
+        map.forEach(function (arrayOccurence, word){
+            var total =0;
+            // count the total value of the array
+            for(var i in arrayOccurence) {
+                total+= arrayOccurence[i];
+            }
+            // change the value in the map with the total value
+            map.set(word, total);
+        });
+    });
+    return mapReduced;
+}
+
+function displayMapOfMap(map) {
+    // for each reducer
+    map.forEach(function (map, reducer) {
+        // display the reducer number
+        document.getElementById("demo").innerHTML +="<br>" + reducer +": {<br>";
+        // for each word
+        map.forEach(function (value, word) {
+            // display the key and the value of the map
+            document.getElementById("demo").innerHTML += "    "+ word  + "-> {"+ value +"}<br>";
+        });
+        document.getElementById("demo").innerHTML += "}";
+    });
+}
+var listInputs = new Array("i tried dude", "not sure i made it", "what ? i do what i want");
+
+document.getElementById("demo").innerHTML = listInputs + "<br>";
+
+var originalMap = map(listInputs);
+
+document.getElementById("demo").innerHTML +="<br> **** MAP() **** <br>";
+displayMapOfMap(originalMap);
+
+document.getElementById("demo").innerHTML +="<br><br><br> **** SHUFFLE AND SORT() **** <br>";
+
+var shuffleAndSortMap = shuffleAndSort(5, originalMap); 
+displayMapOfMap(shuffleAndSortMap);
+
+document.getElementById("demo").innerHTML +="<br><br><br> **** REDUCE() **** <br>";
+
+var reduceMap = reduce(shuffleAndSortMap);
+displayMapOfMap(reduceMap);
+
+</script>
+
+</body>
+</html>
